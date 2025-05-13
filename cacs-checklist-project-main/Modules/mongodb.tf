@@ -1,6 +1,3 @@
-# provider "aws" {
-#   region     = "eu-west-2"
-# }
 
 data "http" "my_ip" {
   url = "https://checkip.amazonaws.com/"
@@ -19,7 +16,9 @@ resource "aws_security_group" "mongodb_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["${trimspace(data.http.my_ip.response_body)}/32"]
+    # This only allows the local IP - Terraform Cloud is running the provisioner from its own IP not the local machine
+   # cidr_blocks = ["${trimspace(data.http.my_ip.response_body)}/32"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -41,7 +40,7 @@ resource "aws_security_group" "mongodb_sg" {
 resource "aws_instance" "mongodb_ec2" {
   ami                    = data.aws_ssm_parameter.amazon_linux_ami.value
   instance_type          = "t2.micro"
-  key_name               = "ssh_key" # Replace with your actual key pair name
+  key_name               = "terraform_access" # Replace with your actual key pair name
   vpc_security_group_ids = [aws_security_group.mongodb_sg.id]
   iam_instance_profile = aws_iam_instance_profile.cacs_instance_profile.name
 
@@ -52,29 +51,20 @@ resource "aws_instance" "mongodb_ec2" {
 
 resource "null_resource" "mongo_setup" {
   depends_on = [aws_instance.mongodb_ec2]
-
+  #Updated private key
   connection {
-    type = "ssh"
-    host = aws_instance.mongodb_ec2.public_ip
-    user = "ec2-user"
-    # private_key = file("C:/Users/HainesM/.ssh/ssh_key.pem")
-    # secrets manager and put in my .pem
-    ##use my private
-    private_key = file("C:/Users/IbrarH/.ssh/terraform_access.pem")
+    type        = "ssh"
+    host        = aws_instance.mongodb_ec2.public_ip
+    user        = "ec2-user"
+    private_key = var.ssh_private_key
+
 
   }
 
   provisioner "remote-exec" {
     inline = [
       "set -e",
-      "echo 'Installing AWS CLI...'",
-      "curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip'",
-      "unzip awscliv2.zip",
-      "sudo ./aws/install",
-      "sudo yum install -y jq",
 
-<<<<<<< HEAD:cacs-checklist-project-main/Modules/mongodb.tf
-=======
       # Install AWS CLI
       "echo 'Installing AWS CLI...'",
       "curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip'",
@@ -85,7 +75,6 @@ resource "null_resource" "mongo_setup" {
       "sudo yum install -y jq",
 
       # Add MongoDB repo
->>>>>>> 6b60d9f (Updated Mongodb.tf code):Modules/mongodb.tf
       "cat <<EOF | sudo tee /etc/yum.repos.d/mongodb-org-8.0.repo",
       "[mongodb-org-8.0]",
       "name=MongoDB Repository",
@@ -108,32 +97,21 @@ resource "null_resource" "mongo_setup" {
       "sudo systemctl start mongod",
       "sleep 10",
 
-<<<<<<< HEAD:cacs-checklist-project-main/Modules/mongodb.tf
-      "curl -o mongosh.rpm https://downloads.mongodb.com/compass/mongosh-2.1.5.x86_64.rpm",
-      "sudo yum install -y ./mongosh.rpm",
-
-=======
       # Install mongosh
       "curl -o mongosh.rpm https://downloads.mongodb.com/compass/mongosh-2.1.5.x86_64.rpm",
       "sudo yum install -y ./mongosh.rpm",
 
       # Fetch MongoDB credentials
->>>>>>> 6b60d9f (Updated Mongodb.tf code):Modules/mongodb.tf
       "echo 'Fetching MongoDB credentials from Secrets Manager...'",
       "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id mongodb-credentials --query SecretString --output text)",
       "USERNAME=$(echo $SECRET_JSON | jq -r .username)",
       "PASSWORD=$(echo $SECRET_JSON | jq -r .password)",
       "echo 'Creating MongoDB admin user...'",
 
-<<<<<<< HEAD:cacs-checklist-project-main/Modules/mongodb.tf
-      "mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
-
-=======
       # Create admin user
       "mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
 
       # Enable MongoDB authentication and remote access
->>>>>>> 6b60d9f (Updated Mongodb.tf code):Modules/mongodb.tf
       "sudo sed -i '/^#*security:/,/^[^ ]/d' /etc/mongod.conf",
       "echo -e '\\nsecurity:\\n  authorization: enabled' | sudo tee -a /etc/mongod.conf",
       "sudo sed -i 's/^  bindIp: .*/  bindIp: 0.0.0.0/' /etc/mongod.conf",
@@ -144,7 +122,9 @@ resource "null_resource" "mongo_setup" {
   }
 }
 
+
+
 # output "mongodb_connection_info" {
 #   value = "mongodb://<hidden-username>:<hidden-password>@${aws_instance.mongodb_ec2.public_ip}:27017"
 # }
-#
+
