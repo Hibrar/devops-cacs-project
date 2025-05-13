@@ -55,7 +55,7 @@ resource "null_resource" "mongo_setup" {
     user        = "ec2-user"
     private_key = var.ssh_private_key
   }
-
+#updated remote exec block
   provisioner "remote-exec" {
     inline = [
       "set -e",
