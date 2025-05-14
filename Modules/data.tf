@@ -8,6 +8,7 @@ data "aws_ami" "get_ami" {
   }
 
   filter {
+  filter {
     name   = "virtualization-type"
     values = ["hvm"] #Using hardware virtual machine virtualisation
   }
