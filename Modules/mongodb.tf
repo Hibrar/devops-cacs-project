@@ -170,13 +170,13 @@ resource "null_resource" "mongo_setup" {
       # Install AWS CLI
       "echo 'Installing AWS CLI...'",
       "curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip'",
-      "unzip awscliv2.zip",
+      "unzip -o awscliv2.zip",
       "sudo ./aws/install",
 
       # Install jq
       "sudo yum install -y jq",
 
-      # Add MongoDB repo (only once)
+      # Add MongoDB repo
       "echo '[mongodb-org-8.0]' | sudo tee /etc/yum.repos.d/mongodb-org-8.0.repo",
       "echo 'name=MongoDB Repository' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
       "echo 'baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/8.0/x86_64/' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
@@ -184,14 +184,14 @@ resource "null_resource" "mongo_setup" {
       "echo 'enabled=1' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
       "echo 'gpgkey=https://pgp.mongodb.com/server-8.0.asc' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
 
-      # Clean & update
+      # Refresh yum cache
       "sudo yum clean all",
       "sudo yum makecache --refresh",
 
-      # Install MongoDB & mongosh
+      # Install MongoDB full server & CLI
       "sudo yum install -y mongodb-org mongodb-mongosh",
 
-      # Start MongoDB
+      # Enable and start MongoDB
       "sudo systemctl enable mongod",
       "sudo systemctl start mongod",
       "sleep 10",
@@ -205,18 +205,19 @@ resource "null_resource" "mongo_setup" {
       # Create MongoDB admin user
       "mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
 
-      # Enable authentication and allow remote access
-      "sudo sed -i '/^#*security:/,/^[^ ]/d' /etc/mongod.conf",
+      # Enable authentication and remote access
+      "sudo sed -i '/^#*security:/,/^[^ ]/d' /etc/mongod.conf || true",
       "echo -e '\\nsecurity:\\n  authorization: enabled' | sudo tee -a /etc/mongod.conf",
       "sudo sed -i 's/^  bindIp: .*/  bindIp: 0.0.0.0/' /etc/mongod.conf",
 
-      # Restart MongoDB
+      # Restart MongoDB to apply changes
       "sudo systemctl restart mongod",
 
-      # Confirm mongosh works (optional)
+      # Confirm mongosh
       "mongosh --version || (echo 'mongosh install failed' && exit 1)"
     ]
   }
+
 
 }
 
