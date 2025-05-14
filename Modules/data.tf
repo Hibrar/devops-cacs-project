@@ -31,3 +31,7 @@ data "aws_subnets" "public" {
     values = [data.aws_vpc.default.id]
   }
 }
+
+data "aws_ssm_parameter" "amazon_linux_ami" {
+  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-kernel-5.10-hvm-x86_64-gp2"
+}
