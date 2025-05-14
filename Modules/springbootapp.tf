@@ -1,4 +1,3 @@
-# EC2 Instance to run Spring Boot app
 resource "aws_instance" "springboot_app" {
   ami                    = data.aws_ssm_parameter.amazon_linux_ami.value
   instance_type          = "t2.micro"
@@ -10,7 +9,6 @@ resource "aws_instance" "springboot_app" {
     Name = "springboot-app"
   }
 
-  # SSH connection details
   connection {
     type        = "ssh"
     user        = "ec2-user"
@@ -18,10 +16,13 @@ resource "aws_instance" "springboot_app" {
     host        = self.public_ip
   }
 
-  # Commands to run on the EC2 instance
   provisioner "remote-exec" {
     inline = [
       "set -e",
+
+      #  Wait for yum lock to clear
+      "while sudo fuser /var/run/yum.pid >/dev/null 2>&1; do echo 'Waiting for yum lock...'; sleep 5; done",
+
       "echo 'Updating system...'",
       "sudo yum update -y",
 
