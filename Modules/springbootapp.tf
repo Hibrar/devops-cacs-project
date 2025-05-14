@@ -27,7 +27,7 @@ resource "aws_instance" "springboot_app" {
       "sudo yum update -y",
 
       # Install Java 17
-      "sudo yum install -y java-17-amazon-corretto",
+      "sudo yum install -y java-21-amazon-corretto",
       "java -version",
 
       # Install Maven
