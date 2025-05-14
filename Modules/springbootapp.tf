@@ -22,27 +22,34 @@ resource "aws_instance" "springboot_app" {
   provisioner "remote-exec" {
     inline = [
       "set -e",
-      "echo 'Start provisioning...'",
-
+      "echo 'Updating system...'",
       "sudo yum update -y",
-      "sudo yum install -y java-21-amazon-corretto || echo 'Java install failed' && exit 2",
-      "java -version || echo 'Java version check failed' && exit 2",
 
-      "sudo yum install -y maven git || echo 'Maven/Git install failed' && exit 2",
+      "echo 'Installing Java 21...'",
+      "sudo yum install -y java-21-amazon-corretto || (echo 'Java install failed' && exit 2)",
+      "java -version || (echo 'Java not found' && exit 2)",
+      "echo 'Java installed successfully'",
 
-      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app || echo 'Git clone failed' && exit 2",
+      "echo 'Installing Maven and Git...'",
+      "sudo yum install -y maven git || (echo 'Maven/Git install failed' && exit 2)",
+      "mvn -v || (echo 'Maven not found' && exit 2)",
+      "echo 'Maven and Git installed'",
+
+      "echo 'Cloning GitHub repo...'",
+      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app || (echo 'Git clone failed' && exit 2)",
       "cd /home/ec2-user/app",
 
-      "./mvnw clean package -DskipTests || echo 'Maven build failed' && exit 2",
+      "echo 'Building app with Maven wrapper...'",
+      "chmod +x ./mvnw || (echo 'mvnw permission issue' && exit 2)",
+      "./mvnw clean package -DskipTests || (echo 'Maven build failed' && exit 2)",
 
-      "ls target",
-      "JAR=$(find target -name '*.jar') || echo 'JAR not found' && exit 2",
-      "echo 'Running $JAR'",
+      "echo 'Listing JAR files...'",
+      "ls -l target || (echo 'target folder not found' && exit 2)",
+      "JAR=$(find target -name '*.jar') || (echo 'JAR not found' && exit 2)",
+      "echo 'Running app: $JAR'",
       "nohup java -jar $JAR > app.log 2>&1 &",
 
-      "echo 'Provisioning completed successfully.'"
+      "echo 'Provisioning complete.'"
     ]
-
   }
-
 }
