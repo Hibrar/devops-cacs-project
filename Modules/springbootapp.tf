@@ -21,7 +21,7 @@ resource "aws_instance" "springboot_app" {
   # Commands to run on the EC2 instance
   provisioner "remote-exec" {
     inline = [
-      "set -e",
+      "set -ex",
 
       # Update system packages
       "sudo yum update -y",
