@@ -1,4 +1,3 @@
-# EC2 Instance to run Spring Boot app
 resource "aws_instance" "springboot_app" {
   ami                    = data.aws_ssm_parameter.amazon_linux_ami.value
   instance_type          = "t2.micro"
@@ -21,38 +20,34 @@ resource "aws_instance" "springboot_app" {
     inline = [
       "set -e",
 
-      # Wait for yum lock to clear (max 5 minutes)
-      "echo 'Checking for yum lock...'",
-      "for i in {1..60}; do",
-      "  if sudo fuser /var/run/yum.pid >/dev/null 2>&1; then",
-      "    echo 'yum is locked... waiting 5s'",
-      "    sleep 5",
-      "  else",
-      "    break",
-      "  fi",
-      "done",
+      # Disable auto updates to avoid yum lock (for Amazon Linux 2023)
+      "echo 'Disabling automatic updates...'",
+      "sudo systemctl stop dnf-automatic.timer || true",
+      "sudo systemctl disable dnf-automatic.timer || true",
+
+      # Wait for yum lock to clear
+      "echo 'Checking for YUM lock...'",
+      "while sudo fuser /var/run/yum.pid >/dev/null 2>&1; do echo 'Waiting for yum lock...'; sleep 5; done",
 
       "echo 'Updating system...'",
       "sudo yum update -y",
 
       "echo 'Installing Java 21...'",
-      "sudo yum install -y java-21-amazon-corretto || (echo 'Java install failed' && exit 2)",
-      "java -version || (echo 'Java not found' && exit 2)",
+      "sudo yum install -y java-21-amazon-corretto",
 
       "echo 'Installing Maven and Git...'",
-      "sudo yum install -y maven git || (echo 'Maven/Git install failed' && exit 2)",
-      "mvn -v || (echo 'Maven not found' && exit 2)",
+      "sudo yum install -y maven git",
 
       "echo 'Cloning GitHub repo...'",
-      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app || (echo 'Git clone failed' && exit 2)",
+      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app",
+
       "cd /home/ec2-user/app",
+      "chmod +x ./mvnw",
+      "echo 'Building app...'",
+      "./mvnw clean package -DskipTests",
 
-      "echo 'Building app with Maven wrapper...'",
-      "chmod +x ./mvnw || (echo 'mvnw permission issue' && exit 2)",
-      "./mvnw clean package -DskipTests || (echo 'Maven build failed' && exit 2)",
-
-      "echo 'Running app with nohup...'",
-      "JAR=$(find target -name '*.jar' | head -n 1) || (echo 'JAR not found' && exit 2)",
+      "echo 'Running Spring Boot app...'",
+      "JAR=$(find target -name '*.jar')",
       "nohup java -jar $JAR > app.log 2>&1 &",
 
       "echo 'Provisioning complete.'"
