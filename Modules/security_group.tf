@@ -20,6 +20,14 @@ resource "aws_security_group" "allow_tls" {
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+  description = "Allow Spring Boot HTTP (port 8080)"
+  from_port   = 8080
+  to_port     = 8080
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
 # Allow all outbound traffic
   egress {
     from_port = 0

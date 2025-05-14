@@ -21,31 +21,25 @@ resource "aws_instance" "springboot_app" {
   # Commands to run on the EC2 instance
   provisioner "remote-exec" {
     inline = [
-      "set -ex",
-
-      # Update system packages
+      "set -e",
       "sudo yum update -y",
 
-      # Install Java 17 (recommended for Spring Boot unless your app uses Java 21)
-      "sudo yum install -y java-17-amazon-corretto",
-      "java -version",
+      # Install Java 21 (no need for openjdk11)
+      "sudo yum clean metadata",
+      "sudo yum install -y java-21-amazon-corretto",
 
       # Install Maven and Git
       "sudo yum install -y maven git",
 
-      # Clone the Spring Boot project
-      "git clone https://github.com/nldblanch/cacs-checklist.git springboot-app",
+      # Clone the Spring Boot GitHub repo
+      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app",
+      "cd /home/ec2-user/app",
 
-      # Navigate into backend and build the application
-      "cd springboot-app/backend",
-      "mvn clean package -DskipTests",
+      # Build the Spring Boot application
+      "./mvnw clean package -DskipTests",
 
-      # Run the Spring Boot application (adjust JAR name based on actual output)
-      "nohup java -jar target/cacs-checklist-0.0.1-SNAPSHOT.jar > output.log 2>&1 &",
-
-      # Optional: wait and tail the output
-      "sleep 10",
-      "tail -n 30 output.log"
+      # Run the app (on port 8080 by default)
+      "nohup java -jar target/*SNAPSHOT.jar > app.log 2>&1 &"
     ]
   }
 }
