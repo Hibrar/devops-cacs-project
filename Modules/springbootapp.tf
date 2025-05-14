@@ -22,28 +22,27 @@ resource "aws_instance" "springboot_app" {
   provisioner "remote-exec" {
     inline = [
       "set -e",
-      "echo 'Updating system...'",
+      "echo 'Start provisioning...'",
+
       "sudo yum update -y",
+      "sudo yum install -y java-21-amazon-corretto || echo 'Java install failed' && exit 2",
+      "java -version || echo 'Java version check failed' && exit 2",
 
-      "echo 'Installing Java 21...'",
-      "sudo yum clean metadata || echo 'Metadata clean failed'",
-      "sudo yum install -y java-21-amazon-corretto || echo 'Java install failed'",
+      "sudo yum install -y maven git || echo 'Maven/Git install failed' && exit 2",
 
-      "echo 'Installing Maven and Git...'",
-      "sudo yum install -y maven git || echo 'Maven/Git install failed'",
-
-      "echo 'Cloning app repo...'",
-      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app || echo 'Git clone failed'",
+      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app || echo 'Git clone failed' && exit 2",
       "cd /home/ec2-user/app",
 
-      "echo 'Building app with Maven...'",
-      "./mvnw clean package -DskipTests || echo 'Maven build failed'",
+      "./mvnw clean package -DskipTests || echo 'Maven build failed' && exit 2",
 
-      "echo 'Running app with nohup...'",
-      "nohup java -jar target/*SNAPSHOT.jar > app.log 2>&1 & || echo 'App failed to start'",
+      "ls target",
+      "JAR=$(find target -name '*.jar') || echo 'JAR not found' && exit 2",
+      "echo 'Running $JAR'",
+      "nohup java -jar $JAR > app.log 2>&1 &",
 
-      "echo 'Provisioning complete.'"
+      "echo 'Provisioning completed successfully.'"
     ]
+
   }
 
 }
