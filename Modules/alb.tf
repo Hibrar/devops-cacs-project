@@ -1,3 +1,8 @@
+resource "random_id" "unique_id" {
+  byte_length = 4
+}
+
+
 ## Launch Template
 # Blueprint for EC2 instance creation
 resource "aws_launch_template" "springboot_lt" {
@@ -57,7 +62,7 @@ resource "aws_autoscaling_group" "springboot_asg" {
 
 #Creating a target group for the Spring Boot app - Communicates to the ALB where to sent the traffic (port 80)
 resource "aws_lb_target_group" "springboot_tg" {
-  name = "springboot-tg1"
+  name = "springboot-tg-${random_id.unique_id.hex}"
   port = 8080
   protocol = "HTTP"
   target_type = "instance"

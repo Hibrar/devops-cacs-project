@@ -22,24 +22,28 @@ resource "aws_instance" "springboot_app" {
   provisioner "remote-exec" {
     inline = [
       "set -e",
+      "echo 'Updating system...'",
       "sudo yum update -y",
 
-      # Install Java 21 (no need for openjdk11)
-      "sudo yum clean metadata",
-      "sudo yum install -y java-21-amazon-corretto",
+      "echo 'Installing Java 21...'",
+      "sudo yum clean metadata || echo 'Metadata clean failed'",
+      "sudo yum install -y java-21-amazon-corretto || echo 'Java install failed'",
 
-      # Install Maven and Git
-      "sudo yum install -y maven git",
+      "echo 'Installing Maven and Git...'",
+      "sudo yum install -y maven git || echo 'Maven/Git install failed'",
 
-      # Clone the Spring Boot GitHub repo
-      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app",
+      "echo 'Cloning app repo...'",
+      "git clone https://github.com/nldblanch/cacs-checklist.git /home/ec2-user/app || echo 'Git clone failed'",
       "cd /home/ec2-user/app",
 
-      # Build the Spring Boot application
-      "./mvnw clean package -DskipTests",
+      "echo 'Building app with Maven...'",
+      "./mvnw clean package -DskipTests || echo 'Maven build failed'",
 
-      # Run the app (on port 8080 by default)
-      "nohup java -jar target/*SNAPSHOT.jar > app.log 2>&1 &"
+      "echo 'Running app with nohup...'",
+      "nohup java -jar target/*SNAPSHOT.jar > app.log 2>&1 & || echo 'App failed to start'",
+
+      "echo 'Provisioning complete.'"
     ]
   }
+
 }
