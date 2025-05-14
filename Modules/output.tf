@@ -9,3 +9,8 @@ output "alb_dns_name" {
   description = "Public DNS of the ALB"
   value = aws_lb.springboot_alb.dns_name
 }
+
+output "cloudwatch_dashboard_name" {
+  value       = aws_cloudwatch_dashboard.cacs_dashboard.dashboard_name
+  description = "CloudWatch dashboard name for EC2 & ALB metrics"
+}

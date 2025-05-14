@@ -31,3 +31,22 @@ variable "ssh_private_key" {
   type        = string
   sensitive   = true
 }
+variable "alarm_topic_name" {
+  description = "Name for the SNS alarm topic"
+  type        = string
+}
+
+variable "email_alert" {
+  description = "Email address to receive alarm notifications"
+  type        = string
+}
+
+variable "log_group_name" {
+  description = "Name of the CloudWatch Log Group"
+  type        = string
+}
+
+variable "log_stream_name" {
+  description = "Name of the CloudWatch Log Stream"
+  type        = string
+}

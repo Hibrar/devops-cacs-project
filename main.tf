@@ -29,4 +29,9 @@ module "cacs_checklist_module" {
   # db_password = var.db_password
   api_token   = var.api_token
   ssh_private_key  = var.ssh_private_key
+
+  alarm_topic_name = "cacs-alarm-topic"
+  email_alert      = "your.email@example.com"
+  log_group_name   = "/springboot/app/logs"
+  log_stream_name  = "springboot-log-stream"
 }
