@@ -14,3 +14,8 @@ output "cloudwatch_dashboard_name" {
   value       = aws_cloudwatch_dashboard.cacs_dashboard.dashboard_name
   description = "CloudWatch dashboard name for EC2 & ALB metrics"
 }
+output "springboot_app_ip" {
+  value       = aws_instance.springboot_app.public_ip
+  description = "Public IP of the Spring Boot app EC2 instance"
+}
+
