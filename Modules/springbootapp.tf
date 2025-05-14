@@ -1,34 +1,51 @@
+# ✅ Fetch latest Amazon Linux 2023 AMI via SSM
+data "aws_ssm_parameter" "amazon_linux_ami" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+}
+
+# ✅ EC2 Instance to run Spring Boot app
 resource "aws_instance" "springboot_app" {
-  ami                    = "ami-0faab6bdbac9486fb" # Ubuntu 22.04 LTS
-  instance_type          = "t2.micro"
-  key_name               = "terraform_access"
-  vpc_security_group_ids = [aws_security_group.allow_tls.id] # Reuse existing SG
-  iam_instance_profile   = aws_iam_instance_profile.cacs_instance_profile.name
+  ami                         = data.aws_ssm_parameter.amazon_linux_ami.value
+  instance_type               = "t2.micro"
+  key_name                    = var.key_name
+  vpc_security_group_ids      = [aws_security_group.allow_tls.id]
+  iam_instance_profile        = aws_iam_instance_profile.cacs_instance_profile.name
 
   tags = {
-    Name = "SpringBootApp"
+    Name = "springboot-app"
   }
 
   provisioner "remote-exec" {
     connection {
       type        = "ssh"
-      user        = "ubuntu"
+      user        = "ec2-user"
       private_key = var.ssh_private_key
       host        = self.public_ip
     }
 
     inline = [
-      "sudo apt update -y",
-      "sudo apt install -y openjdk-17-jdk maven git",
+      "set -e",
 
-      # Clone the repo
-      "git clone https://github.com/nldblanch/cacs-checklist.git",
+      # ✅ Update system
+      "sudo yum update -y",
 
-      # Go into the repo and build the app
-      "cd cacs-checklist/backend/springboot && mvn clean package",
+      # ✅ Install Java 17
+      "sudo yum install -y java-17-amazon-corretto",
+      "java -version",
 
-      # Run the jar file
-      "nohup java -jar target/*.jar > app.log 2>&1 &"
+      # ✅ Install Maven
+      "sudo yum install -y maven",
+
+      # ✅ Install Git and clone the Spring Boot repo
+      "sudo yum install -y git",
+      "git clone https://github.com/nldblanch/cacs-checklist.git springboot-app",
+
+      # ✅ Navigate to project and build the JAR
+      "cd springboot-app/backend",
+      "mvn clean package -DskipTests",
+
+      # ✅ Run the Spring Boot JAR (background)
+      "nohup java -jar target/*.jar > output.log 2>&1 &"
     ]
   }
 }
