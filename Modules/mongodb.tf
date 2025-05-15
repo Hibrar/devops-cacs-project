@@ -167,7 +167,6 @@ resource "null_resource" "mongo_setup" {
     inline = [
       "echo '⏳ Starting MongoDB EC2 Setup...'",
 
-      # System setup
       "set -e",
       "sudo yum install -y unzip jq",
 
@@ -184,37 +183,34 @@ resource "null_resource" "mongo_setup" {
       "echo 'enabled=1' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
       "echo 'gpgkey=https://pgp.mongodb.com/server-8.0.asc' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
 
-      # Install MongoDB server
+      # Install MongoDB
       "sudo yum clean all",
       "sudo yum makecache --refresh",
       "sudo yum install -y mongodb-org",
 
-      # Start and enable mongod
+      # Start MongoDB
       "sudo systemctl enable mongod",
       "sudo systemctl start mongod",
       "sleep 10",
 
-      # Install mongosh manually
+      # Install mongosh and make it executable
       "curl -O https://downloads.mongodb.com/compass/mongosh-2.1.5-linux-x64.tgz",
       "tar -xvzf mongosh-2.1.5-linux-x64.tgz",
       "sudo cp mongosh-2.1.5-linux-x64/bin/mongosh /usr/local/bin/mongosh",
       "sudo chmod +x /usr/local/bin/mongosh",
-      "echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc",
-      "source ~/.bashrc",
 
+      # Test mongosh installation directly with full path
+      "/usr/local/bin/mongosh --version || (echo '❌ mongosh install failed' && exit 1)",
 
-      # Confirm install
-      "mongosh --version || (echo '❌ mongosh install failed' && exit 1)",
-
-      # Retrieve Secrets
+      # Retrieve secrets
       "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id mongodb-credentials --query SecretString --output text)",
       "USERNAME=$(echo $SECRET_JSON | jq -r .username)",
       "PASSWORD=$(echo $SECRET_JSON | jq -r .password)",
 
-      # Create admin user
-      "mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
+      # Create admin user with full path
+      "/usr/local/bin/mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
 
-      # Enable authentication & remote access
+      # Enable authentication and remote access
       "sudo sed -i '/^#*security:/,/^[^ ]/d' /etc/mongod.conf || true",
       "echo -e '\\nsecurity:\\n  authorization: enabled' | sudo tee -a /etc/mongod.conf",
       "sudo sed -i 's/^  bindIp: .*/  bindIp: 0.0.0.0/' /etc/mongod.conf",
