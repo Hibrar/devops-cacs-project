@@ -24,10 +24,7 @@ resource "aws_instance" "springboot_app" {
       "sudo systemctl disable dnf-automatic.timer || true",
 
       "echo 'Checking for DNF lock...'",
-      "for i in {1..60}; do",
-      "  sudo lsof /var/cache/dnf/lock >/dev/null 2>&1 || break",
-      "  echo 'Waiting for dnf lock...'; sleep 5",
-      "done",
+      "for i in {1..60}; do sudo lsof /var/cache/dnf/lock >/dev/null 2>&1 || break; echo 'Waiting for dnf lock...'; sleep 5; done",
 
       "sudo dnf makecache --refresh -y",
       "sudo dnf install -y java-21-amazon-corretto maven git",
@@ -37,13 +34,7 @@ resource "aws_instance" "springboot_app" {
       "chmod +x ./mvnw",
       "./mvnw clean package -DskipTests",
 
-      "cd /home/ec2-user/app && JAR=$(find target -name '*.jar') && " +
-      "SPRING_APPLICATION_NAME=cacs-checklist " +
-      "SPRING_DATA_MONGODB_HOST=172.31.45.143 " +
-      "SPRING_DATA_MONGODB_PORT=27017 " +
-      "SPRING_DATA_MONGODB_DATABASE=cacs " +
-      "SPRING_DATA_MONGODB_URI=mongodb://172.31.45.143:27017/cacs " +
-      "SERVER_PORT=8080 nohup java -jar $JAR > app.log 2>&1 &"
+      "cd /home/ec2-user/app && JAR=$(find target -name '*.jar') && SPRING_APPLICATION_NAME=cacs-checklist SPRING_DATA_MONGODB_HOST=172.31.45.143 SPRING_DATA_MONGODB_PORT=27017 SPRING_DATA_MONGODB_DATABASE=cacs SPRING_DATA_MONGODB_URI=mongodb://172.31.45.143:27017/cacs SERVER_PORT=8080 nohup java -jar $JAR > app.log 2>&1 &"
     ]
   }
 }
