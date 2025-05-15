@@ -165,7 +165,7 @@ resource "null_resource" "mongo_setup" {
 
   provisioner "remote-exec" {
     inline = [
-      "echo '⏳ Starting MongoDB EC2 Setup...'",
+      "echo '⏳ Starting MongoDB Secure Setup...'",
 
       "set -e",
       "sudo dnf install -y unzip jq",
@@ -175,44 +175,47 @@ resource "null_resource" "mongo_setup" {
       "unzip -o awscliv2.zip",
       "sudo ./aws/install",
 
-      # Add MongoDB 8.0 repo
-      "echo '[mongodb-org-8.0]' | sudo tee /etc/yum.repos.d/mongodb-org-8.0.repo",
-      "echo 'name=MongoDB Repository' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
-      "echo 'baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/8.0/x86_64/' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
-      "echo 'gpgcheck=1' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
-      "echo 'enabled=1' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
-      "echo 'gpgkey=https://pgp.mongodb.com/server-8.0.asc' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
+      # Add MongoDB 7.0 repo (for AL2023)
+      "echo '[mongodb-org-7.0]' | sudo tee /etc/yum.repos.d/mongodb-org-7.0.repo",
+      "echo 'name=MongoDB Repository' | sudo tee -a /etc/yum.repos.d/mongodb-org-7.0.repo",
+      "echo 'baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/' | sudo tee -a /etc/yum.repos.d/mongodb-org-7.0.repo",
+      "echo 'gpgcheck=1' | sudo tee -a /etc/yum.repos.d/mongodb-org-7.0.repo",
+      "echo 'enabled=1' | sudo tee -a /etc/yum.repos.d/mongodb-org-7.0.repo",
+      "echo 'gpgkey=https://pgp.mongodb.com/server-7.0.asc' | sudo tee -a /etc/yum.repos.d/mongodb-org-7.0.repo",
 
-      # Clean and install MongoDB & mongosh
+      # Install MongoDB & mongosh
       "sudo dnf clean all",
       "sudo dnf makecache",
       "sudo dnf install -y mongodb-org mongodb-mongosh",
 
-      # Start MongoDB
+      # Start and enable MongoDB
       "sudo systemctl enable mongod",
       "sudo systemctl start mongod",
       "sleep 5",
 
-      # Confirm mongosh installed properly
+      # Confirm mongosh
       "/usr/bin/mongosh --version || (echo '❌ mongosh install failed' && exit 1)",
 
-      # Retrieve Secrets
+      # Get secrets
       "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id mongodb-credentials --query SecretString --output text)",
       "USERNAME=$(echo $SECRET_JSON | jq -r .username)",
       "PASSWORD=$(echo $SECRET_JSON | jq -r .password)",
 
-      # Use full path for mongosh
-      "/usr/bin/mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
+      # Create admin user
+      "/usr/bin/mongosh --eval \"db.getSiblingDB('admin').createUser({user: '$USERNAME', pwd: '$PASSWORD', roles: [{role: 'userAdminAnyDatabase', db: 'admin'}, {role: 'readWriteAnyDatabase', db: 'admin'}]})\"",
 
       # Enable auth
       "sudo sed -i '/^#*security:/,/^[^ ]/d' /etc/mongod.conf || true",
       "echo -e '\\nsecurity:\\n  authorization: enabled' | sudo tee -a /etc/mongod.conf",
       "sudo sed -i 's/^  bindIp: .*/  bindIp: 0.0.0.0/' /etc/mongod.conf",
+
+      # Restart mongod to apply changes
       "sudo systemctl restart mongod",
 
-      "echo '✅ MongoDB setup completed successfully on Amazon Linux 2023.'"
+      "echo '✅ MongoDB setup complete with admin auth enabled!'"
     ]
   }
+
 
 
 
