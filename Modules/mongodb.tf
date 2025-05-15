@@ -165,6 +165,7 @@ resource "null_resource" "mongo_setup" {
 
   provisioner "remote-exec" {
     inline = [
+      "echo 'Triggering reprovisioning for mongosh install ✅'",
       "set -e",
 
       # Install AWS CLI
