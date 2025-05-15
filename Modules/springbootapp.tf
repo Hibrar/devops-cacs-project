@@ -43,10 +43,7 @@ resource "aws_instance" "springboot_app" {
       "SPRING_DATA_MONGODB_PORT=27017 " +
       "SPRING_DATA_MONGODB_DATABASE=cacs " +
       "SPRING_DATA_MONGODB_URI=mongodb://172.31.45.143:27017/cacs " +
-      "SERVER_PORT=8080 " +
-      "nohup java -jar $JAR > app.log 2>&1 &"
+      "SERVER_PORT=8080 nohup java -jar $JAR > app.log 2>&1 &"
     ]
   }
-
-
 }
