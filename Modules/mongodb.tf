@@ -2,11 +2,8 @@ data "http" "my_ip" {
   url = "https://checkip.amazonaws.com/"
 }
 
-# data "aws_ssm_parameter" "amazon_linux_ami" {
-#   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
-# }
 data "aws_ssm_parameter" "amazon_linux_ami" {
-  name = "/aws/service/ami-amazon-linux-2/latest/image_id"
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
 resource "aws_security_group" "mongodb_sg" {
@@ -171,14 +168,14 @@ resource "null_resource" "mongo_setup" {
       "echo '⏳ Starting MongoDB EC2 Setup...'",
 
       "set -e",
-      "sudo yum install -y unzip jq",
+      "sudo dnf install -y unzip jq",
 
       # Install AWS CLI
       "curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip'",
       "unzip -o awscliv2.zip",
       "sudo ./aws/install",
 
-      # Add MongoDB repo
+      # Add MongoDB 8.0 repo
       "echo '[mongodb-org-8.0]' | sudo tee /etc/yum.repos.d/mongodb-org-8.0.repo",
       "echo 'name=MongoDB Repository' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
       "echo 'baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/8.0/x86_64/' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
@@ -186,44 +183,37 @@ resource "null_resource" "mongo_setup" {
       "echo 'enabled=1' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
       "echo 'gpgkey=https://pgp.mongodb.com/server-8.0.asc' | sudo tee -a /etc/yum.repos.d/mongodb-org-8.0.repo",
 
-      # Install MongoDB
-      "sudo yum clean all",
-      "sudo yum makecache --refresh",
-      "sudo yum install -y mongodb-org",
+      # Clean and install MongoDB & mongosh
+      "sudo dnf clean all",
+      "sudo dnf makecache",
+      "sudo dnf install -y mongodb-org mongodb-mongosh",
 
       # Start MongoDB
       "sudo systemctl enable mongod",
       "sudo systemctl start mongod",
-      "sleep 10",
+      "sleep 5",
 
-      # Install mongosh and make it executable
-      "curl -O https://downloads.mongodb.com/compass/mongosh-2.1.5-linux-x64.tgz",
-      "tar -xvzf mongosh-2.1.5-linux-x64.tgz",
-      "sudo cp mongosh-2.1.5-linux-x64/bin/mongosh /usr/local/bin/mongosh",
-      "sudo chmod +x /usr/local/bin/mongosh",
+      # Confirm mongosh installed properly
+      "/usr/bin/mongosh --version || (echo '❌ mongosh install failed' && exit 1)",
 
-      # Test mongosh installation directly with full path
-      "/usr/local/bin/mongosh --version || (echo '❌ mongosh install failed' && exit 1)",
-
-      # Retrieve secrets
+      # Retrieve Secrets
       "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id mongodb-credentials --query SecretString --output text)",
       "USERNAME=$(echo $SECRET_JSON | jq -r .username)",
       "PASSWORD=$(echo $SECRET_JSON | jq -r .password)",
 
-      # Create admin user with full path
-      "/usr/local/bin/mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
+      # Use full path for mongosh
+      "/usr/bin/mongosh --eval \"db.getSiblingDB('admin').createUser({user:'$USERNAME',pwd:'$PASSWORD',roles:[{role:'userAdminAnyDatabase',db:'admin'},{role:'readWriteAnyDatabase',db:'admin'}]})\"",
 
-      # Enable authentication and remote access
+      # Enable auth
       "sudo sed -i '/^#*security:/,/^[^ ]/d' /etc/mongod.conf || true",
       "echo -e '\\nsecurity:\\n  authorization: enabled' | sudo tee -a /etc/mongod.conf",
       "sudo sed -i 's/^  bindIp: .*/  bindIp: 0.0.0.0/' /etc/mongod.conf",
-
-      # Restart MongoDB
       "sudo systemctl restart mongod",
 
-      "echo '✅ MongoDB setup completed successfully.'"
+      "echo '✅ MongoDB setup completed successfully on Amazon Linux 2023.'"
     ]
   }
+
 
 
 }
