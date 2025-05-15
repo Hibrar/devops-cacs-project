@@ -197,7 +197,11 @@ resource "null_resource" "mongo_setup" {
       # Install mongosh manually
       "curl -O https://downloads.mongodb.com/compass/mongosh-2.1.5-linux-x64.tgz",
       "tar -xvzf mongosh-2.1.5-linux-x64.tgz",
-      "sudo mv mongosh-2.1.5-linux-x64/bin/mongosh /usr/local/bin/",
+      "sudo cp mongosh-2.1.5-linux-x64/bin/mongosh /usr/local/bin/mongosh",
+      "sudo chmod +x /usr/local/bin/mongosh",
+      "echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc",
+      "source ~/.bashrc",
+
 
       # Confirm install
       "mongosh --version || (echo '❌ mongosh install failed' && exit 1)",
