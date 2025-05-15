@@ -32,6 +32,6 @@ data "aws_subnets" "public" {
   }
 }
 
-data "aws_ssm_parameter" "amazon_linux_ami" {
-  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-kernel-5.10-hvm-x86_64-gp2"
-}
+# data "aws_ssm_parameter" "amazon_linux_ami" {
+#   name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-kernel-5.10-hvm-x86_64-gp2"
+# }
